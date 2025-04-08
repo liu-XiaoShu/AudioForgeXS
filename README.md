@@ -1,6 +1,6 @@
 # AudioForgeXS 音频锻造专家
 
-[English Version](#README_en.md)
+[English Version](https://github.com/liu-XiaoShu/AudioForgeXS/blob/master/README_en.md)
 
 🔊 一款高效的批量音频处理工具，专注于WAV音频格式的深度处理与测试集生成
 
