@@ -2,7 +2,7 @@
 #-*- coding:utf-8 -*-
 
 
-__version__ = "v2.1.0"
+__version__ = "v2.1.2"
 
 
 
@@ -105,6 +105,13 @@ def func_BasicMode(args):
         input_wav_info["Framerate"] = input("请输入音频采样率:")
         input_wav_info["channels"] = input("请输入音频通道数:")
         input_wav_info["SampleEncoding"] = input("请输入编码位数:")
+    if args.function in ["getMono"]:
+        input_wav_info = input("请输入需要提取音频的通道(从0开始):")
+        try:
+            input_wav_info = int(input_wav_info)
+        except:
+            self.logger.log(f"[AudioProcessSet]: 错误! 当前提取通道值 {input_wav_info} 类型错误，当前只能是数字", "error")
+
     if args.function in ["audioNorm"]:
         input_wav_info = input("请输入音频归一化幅度值(0~1)支持浮点:")
         try:
@@ -146,7 +153,7 @@ def func_GetTestSetMode(args):
 
 
 def main():
-    update_time = "Update time: 2025-04-08\nauthor: liu-XiaoShu"
+    update_time = "Update time: 2025-04-09\nauthor: liu-XiaoShu"
     version_info = "\nversion: " + str(__version__) + "\n" + update_time
     tool_description = "这是一个音频处理的工具，主要是对 WAV 音频的处理"
     parser = argparse.ArgumentParser(description=tool_description, formatter_class=argparse.RawTextHelpFormatter)

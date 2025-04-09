@@ -4,6 +4,7 @@ import os
 import wave
 import soundfile as sf
 from pydub import AudioSegment
+import numpy as np
 
 
 try:
@@ -25,44 +26,42 @@ class AudioBasicProcessing:
             self.logger = DebugLogger()
         self.GetAudioInfo = GetAudioInfo(self.logger)
 
-
     def getMono(self, input_audio_path, output_audio_path, get_channel_index=0):
         """
-            功能:
-                    * 从多声道音频文件提取提取指定声道数据并且生成音音频文件
-            参数:
-                    * input_audio_path:     输入原始音频文件
-                    * output_audio_path:    输出音频文件
-                    * get_channel_index:  需要获取的声道索引, 以0开始
-            返回值:
-                    * bool True/False
+        功能:
+            * 支持任意采样率、比特深度和通道数的音频文件，提取指定声道并生成单声道文件
+        参数:
+            * input_audio_path: 输入音频路径（支持WAV、FLAC等格式）
+            * output_audio_path: 输出音频路径（自动适配格式）
+            * get_channel_index: 声道索引（从0开始）
+        返回值:
+            * bool: 成功返回True，失败返回False
         """
         get_channel_index = int(get_channel_index)
-        self.logger.log(f"[AudioBasicProcessing]: 获取 {input_audio_path} 音频的第 {get_channel_index} 音轨", "debug")
+        self.logger.log(f"[AudioBasicProcessing]: 调试！提取 {input_audio_path} 的第 {get_channel_index} 音轨", "debug")
         try:
-            heard_dict = self.GetAudioInfo.getWavInfor(input_audio_path)
-            inputFileFormat = heard_dict["SampWidth"]
-            inputFileChannels = heard_dict["Channels"]
-            inputFileFramerate = heard_dict["Framerate"]
+            # 使用soundfile读取音频数据及元信息（保留原始格式）
+            sig, samplerate = sf.read(input_audio_path, always_2d=True)
+            channels = sig.shape[1]
 
-            sig, samplerate = sf.read(input_audio_path, dtype="int16")
-            if get_channel_index > inputFileChannels:
-                self.logger.log(f"[AudioBasicProcessing]: 从 {input_audio_path} 文件提取 {get_channel_index} 音轨越界，因该文件总通道数是 {inputFileChannels}", "error")
+            # 校验声道索引有效性
+            if get_channel_index >= channels:
+                self.logger.log(f"[AudioBasicProcessing]: 错误！声道索引 {get_channel_index} 超出范围（总通道数：{channels}）", "error")
                 return False
-            if inputFileChannels < 2:
-                mono_aduioData = sig
-            else:
-                mono_aduioData = sig[:, get_channel_index]
-            with wave.open(output_audio_path, "wb") as wavfb:
-                wavfb.setnchannels(1)
-                wavfb.setsampwidth(inputFileFormat)
-                wavfb.setframerate(inputFileFramerate)
-                wavfb.writeframes(b''.join(mono_aduioData))
-            self.logger.log(f"[AudioBasicProcessing]: 从 {input_audio_path} 文件提取 {get_channel_index} 音轨成功", "debug")
+
+            # 提取目标声道数据
+            mono_data = sig[:, get_channel_index]
+
+            # 直接使用soundfile写入输出文件（自动处理格式和参数）
+            sf.write(output_audio_path, mono_data, samplerate)
+
+            self.logger.log(f"[AudioBasicProcessing]: 调试！成功提取音轨到 {output_audio_path}", "debug")
             return True
         except Exception as e:
-            self.logger.log(f"[AudioBasicProcessing]: 从 {input_audio_path} 文件提取 {get_channel_index} 音轨失败，因 {e}", "error")
+            self.logger.log(f"[AudioBasicProcessing]: 错误！提取失败：{str(e)}", "error")
             return False
+
+
 
     def wavNorm(self, input_audio_path, output_audio_path, norm_number=1):
         """
