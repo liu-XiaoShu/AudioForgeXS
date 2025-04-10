@@ -2,7 +2,7 @@
 #-*- coding:utf-8 -*-
 
 
-__version__ = "v2.1.2"
+__version__ = "v3.0.0"
 
 
 
@@ -13,12 +13,14 @@ from modules.getAudioInfo import GetAudioInfo
 from modules.pathProcessing import PathProcessing
 from modules.audioBasicProcessing import AudioBasicProcessing
 from modules.getTestSetAndNorm import GetTestSetAndNorm
+from modules.audioDataStructureGenerator import AudioDataStructureGenerator
 
 
 Basic_functions_info = {"audioNorm": "音频归一化", "getInfo":"获取音频信息",
                         "getMono": "获取音频单通道", "mp3ToWav":"mp3转wav格式",
                         "pcmToWav": "pcm转wav格式", "wavHeadRepair": "wav音频头修复",
-                        "getFileSize": "获取wav大小","getAllWavDuration": "获取输入所有wav的总时长"}
+                        "getFileSize": "获取wav大小","getAllWavDuration": "获取输入所有wav的总时长",
+                        "structuredAudio": "音频结构化，主要是整理音频结构，方便整理入库"}
 
 class AudioProcessSet:
     def __init__(self, output_root_path, debug):
@@ -39,6 +41,7 @@ class AudioProcessSet:
         self.PathProcessing = PathProcessing(self.logger)
         self.AudioBasicProcessing = AudioBasicProcessing(self.logger)
         self.GetAudioInfo = GetAudioInfo(self.logger)
+        self.AudioDataStructureGenerator = AudioDataStructureGenerator(self.logger)
 
 
 
@@ -59,6 +62,7 @@ class AudioProcessSet:
                         "pcmToWav": self.AudioBasicProcessing.pcmToWav,
                         "getFileSize": self.AudioBasicProcessing.getFileSize,
                         "getAllWavDuration": self.GetAudioInfo.getWavFileDuration,
+                        "structuredAudio": self.AudioDataStructureGenerator.StartStructuredAudio,
                         }
 
         if process_type == "pcmToWav":
@@ -73,8 +77,10 @@ class AudioProcessSet:
 
         total_Duration = 0
         for audio_path in tqdm(audio_path_list, desc=f"\033[0;36;33m音频 {process_type} 处理\033[0m", ncols=150, unit="条"):
-            ouput_path = os.path.join(self.output_root_path, audio_path)
-            os.makedirs(os.path.dirname(ouput_path), exist_ok=True)
+            ouput_path = self.output_root_path
+            if process_type in  ["audioNorm", "getMono", "mp3ToWav", "wavHeadRepair", "pcmToWav"]:
+                ouput_path = os.path.join(self.output_root_path, audio_path)
+                os.makedirs(os.path.dirname(ouput_path), exist_ok=True)
             res = fun_obj_dict[process_type](audio_path, ouput_path, input_wav_info)
             if process_type == "getInfo":
                 self.logger.log(res, "info")
@@ -96,7 +102,7 @@ def func_BasicMode(args):
     """
     print(f"\033[0;36;33m[BasicMode]: 提示! 开始音频 {args.function} 处理\033[0m")
     if not args.inputPath:
-        print("\033[0;36;31m[BasicMode]: 错误! 没有设置音频输入路径 -i/--inputPath\033[0m")
+        print(f"\033[0;36;31m[BasicMode]: 错误! 没有设置音频输入路径 -i/--inputPath\033[0m")
         return False
 
     input_wav_info = None
@@ -105,22 +111,38 @@ def func_BasicMode(args):
         input_wav_info["Framerate"] = input("请输入音频采样率:")
         input_wav_info["channels"] = input("请输入音频通道数:")
         input_wav_info["SampleEncoding"] = input("请输入编码位数:")
+
     if args.function in ["getMono"]:
-        input_wav_info = input("请输入需要提取音频的通道(从0开始):")
-        try:
-            input_wav_info = int(input_wav_info)
-        except:
-            self.logger.log(f"[AudioProcessSet]: 错误! 当前提取通道值 {input_wav_info} 类型错误，当前只能是数字", "error")
+        while True:
+            input_wav_info = input("请输入需要提取音频的通道(从0开始):")
+            try:
+                input_wav_info = int(input_wav_info)
+                break
+            except:
+                print(f"\033[0;36;31m[BasicMode]: 错误! 当前提取通道值 {input_wav_info} 类型错误，当前只能是数字\033[0m")
 
     if args.function in ["audioNorm"]:
-        input_wav_info = input("请输入音频归一化幅度值(0~1)支持浮点:")
-        try:
-            input_wav_info = float(input_wav_info)
-        except:
-            self.logger.log(f"[AudioProcessSet]: 错误! 当前输入的归一化值 {input_wav_info} 类型错误，当前只能是数字", "error")
-        if input_wav_info > 1:
-            self.logger.log(f"[AudioProcessSet]: 错误! 当前输入的归一化值 {input_wav_info} 范围错误，当前范围 0~1, 支持浮点", "error")
+        while True:
+            input_wav_info = input("请输入音频归一化幅度值(0~1)支持浮点:")
+            try:
+                input_wav_info = float(input_wav_info)
+                if input_wav_info > 0 and input_wav_info <= 1:
+                    break
+                print(f"\033[0;36;31m[BasicMode]: 错误! 当前输入的归一化值 {input_wav_info} 范围错误，当前范围 0~1, 支持浮点\033[0m")
+            except:
+                print(f"\033[0;36;31m[BasicMode]: 错误! 当前输入的归一化值 {input_wav_info} 类型错误，当前只能是数字\033[0m")
 
+    if args.function == "structuredAudio":
+        while True:
+            input_wav_info = input("请选择音频结构化操作[预览/执行][1/2]:")
+            try:
+                input_wav_info = int(input_wav_info)
+                if input_wav_info in [1, 2]:
+                    break
+                print(f"\033[0;36;31m[BasicMode]: 错误! 请准确选择音频结构化操作 1 -> 预览 2 -> 执行\033[0m")
+            except:
+                print(f"\033[0;36;31m[BasicMode]: 错误! 请准确选择音频结构化操作 {input_wav_info} 类型错误，当前只能是数字\033[0m")
+            
 
     aps = AudioProcessSet(args.output, args.debug)
     aps.audio_basic_process(args.inputPath, process_type=args.function, input_wav_info=input_wav_info)
@@ -136,15 +158,15 @@ def func_GetTestSetMode(args):
     返回值:
             * None
     """
-    print(f"\033[0;36;33m[BasicMode]: 提示! 开始获取参与转录测试集音频，并归一化处理\033[0m")
+    print(f"\033[0;36;33m[GetTestSetMode]: 提示! 开始获取参与转录测试集音频，并归一化处理\033[0m")
 
 
     if not args.inputPath:
-        print("\033[0;36;31m[BasicMode]: 错误! 没有设置音频输入路径 -i/--inputPath\033[0m")
+        print(f"\033[0;36;31m[GetTestSetMode]: 错误! 没有设置音频输入路径 -i/--inputPath\033[0m")
         return False
 
     if not args.cmdFilePath:
-        print("\033[0;36;31m[BasicMode]: 错误! 没有设置指令词列表文件路径 -c/--cmdFilePath\033[0m")
+        print(f"\033[0;36;31m[GetTestSetMode]: 错误! 没有设置指令词列表文件路径 -c/--cmdFilePath\033[0m")
         return False
 
     gtsan = GetTestSetAndNorm(args.output, args.debug)
@@ -153,7 +175,7 @@ def func_GetTestSetMode(args):
 
 
 def main():
-    update_time = "Update time: 2025-04-09\nauthor: liu-XiaoShu"
+    update_time = "Update time: 2025-04-10\nauthor: liu-XiaoShu"
     version_info = "\nversion: " + str(__version__) + "\n" + update_time
     tool_description = "这是一个音频处理的工具，主要是对 WAV 音频的处理"
     parser = argparse.ArgumentParser(description=tool_description, formatter_class=argparse.RawTextHelpFormatter)
