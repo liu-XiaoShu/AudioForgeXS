@@ -15,6 +15,7 @@
 | Metadata Extraction | Get audio specs/duration/size | Quality inspection     |
 | Mono Conversion     | Stereo to Mono                | ASR optimization       |
 | File Repair         | WAV header recovery           | Corrupted file repair  |
+|File Path Formatting |Standardize naming conventions & hierarchy|File organization|
 
 ### Testset Generation Mode
 
