@@ -2,7 +2,7 @@
 #-*- coding:utf-8 -*-
 
 import os, hashlib, re
-import pypinyin, shutil
+import pypinyin, shutil, sys
 
 try:
     from modules.debugLogger import DebugLogger
@@ -73,6 +73,26 @@ class AudioDataStructureGenerator:
                     * Bool True/False
         """
         return any('\u4e00' <= c <= '\u9fff' for c in text)
+
+
+    def ToLargeCamel(self, name: str) -> str:
+        """
+            功能:
+                    * 下划线或小驼峰 转 大驼峰
+            参数:
+                    * str 需要处理的字符串名称 name
+            返回值:
+                    * str 下划线转驼峰后的字符串
+        """
+        if "_" in name:
+            name = name.title()
+            return re.sub(r'(_[a-zA-Z])', lambda x: x.group(1)[1].upper(), name)
+        else:
+            name_str_list = list(name)
+            initial_upper = name_str_list.pop(0).upper()
+            name_str_list.insert(0, initial_upper)
+            name = "".join(name_str_list)
+            return name
 
 
 
@@ -268,7 +288,7 @@ class AudioDataStructureGenerator:
             self.logger.log(f"[AudioDataStructureGenerator]: 错误！ 未找 {input_audio_path} 文件的指令信息，跳过", "error")
             return False
 
-        keywords_info_dict["指令词"] = self.chinese_characters_to_pinyin(lab_content[0])
+        keywords_info_dict["指令词"] = self.ToLargeCamel(self.chinese_characters_to_pinyin(lab_content[0]))
 
         #2、获取文件MD5
         keywords_info_dict["MD5"] = self.get_file_md5(input_audio_path)
@@ -287,11 +307,11 @@ class AudioDataStructureGenerator:
         #4、猜测地区
         if not self.is_chinese_present(lab_content[0]):
             #不包含中文(可以定义非中国)
-            output_dir = os.path.join(output_audio_path, lab_content[0], keywords_info_dict["语料来源"], "欧美")
+            output_dir = os.path.join(output_audio_path, self.ToLargeCamel(lab_content[0]).replace("_", ""), keywords_info_dict["语料来源"], "欧美")
             keywords_info_dict["地区"] = "yingguo"
             keywords_info_dict["口音"] = "English"
         else:
-            output_dir = os.path.join(output_audio_path, lab_content[0], keywords_info_dict["语料来源"], "中国")
+            output_dir = os.path.join(output_audio_path, self.ToLargeCamel(lab_content[0]).replace("_", ""), keywords_info_dict["语料来源"], "中国")
 
 
         #5、其他信息
@@ -310,6 +330,10 @@ class AudioDataStructureGenerator:
             keywords_info_dict["人编号"] = path_info[-2]
         except:
             self.logger.log(f"[AudioDataStructureGenerator]: 警告！ 未找到 {input_audio_path} 文件的人员编号信息", "warning")
+
+        for key in keywords_info_dict:
+            #去除下划线
+            keywords_info_dict[key] = self.ToLargeCamel(keywords_info_dict[key]).replace("_", "")
 
 
         filename = f'{keywords_info_dict["地区"]}_{keywords_info_dict["口音"]}_{keywords_info_dict["语速"]}'
